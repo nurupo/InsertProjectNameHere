@@ -3,34 +3,45 @@ compiler:
   - gcc
   - clang
 
+matrix:
+ include:
+   - compiler: i686-w64-mingw32-gcc
+     env: OPTIONS="-DWIN32=ON -DMINGW=ON"
+   - compiler: x86_64-w64-mingw32-gcc
+     env: OPTIONS="-DWIN32=ON -DMINGW=ON"
+
 before_script:
+  - sudo apt-get update -qq
+  - bash -c 'if [[ $CC == *mingw* ]]; then export HOST=${CC:0:-4}; fi; echo $HOST;'
+  - bash -c 'if [[ $CC == *i686*mingw* ]]; then sudo apt-get install binutils-mingw-w64-i686   gcc-mingw-w64-i686   wine; fi;'
+  - bash -c 'if [[ $CC == *x86_64*mingw* ]]; then sudo apt-get install binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 wine; fi;'
 # installing libsodium, needed for Core
   - git clone git://github.com/jedisct1/libsodium.git
   - cd libsodium
-  - git checkout tags/0.4.2
+  - git checkout tags/0.4.3
   - ./autogen.sh
-  - ./configure && make check -j3
+  - ./configure --host=$HOST && make check -j3
   - sudo make install
   - cd ..
 # installing libconfig, needed for DHT_bootstrap_daemon
   - wget http://www.hyperrealm.com/libconfig/libconfig-1.4.9.tar.gz
   - tar -xvzf libconfig-1.4.9.tar.gz
   - cd libconfig-1.4.9
-  - ./configure && make -j3
+  - ./configure --host=$HOST && make -j3
   - sudo make install
   - cd ..
 # installing libopus, needed for audio encoding/decoding
   - wget http://downloads.xiph.org/releases/opus/opus-1.0.3.tar.gz
   - tar xzvf opus-1.0.3.tar.gz
   - cd opus-1.0.3
-  - ./configure && make -j3
+  - ./configure --host=$HOST && make -j3
   - sudo make install
   - cd ..
 # installing libsdl1.2, needed for displaying video frames
   - wget http://www.libsdl.org/release/SDL-1.2.15.tar.gz
   - tar -xvzf SDL-1.2.15.tar.gz
   - cd SDL-1.2.15
-  - ./configure && make -j3
+  - ./configure --host=$HOST && make -j3
   - sudo make install
   - cd ..
 # installing libopenal, needed for audio capture/playback
@@ -41,7 +52,7 @@ before_script:
   - wget https://www.ffmpeg.org/releases/ffmpeg-2.0.2.tar.gz
   - tar -xvzf ffmpeg-2.0.2.tar.gz
   - cd ffmpeg-2.0.2
-  - ./configure && make -j3
+  - ./configure --host=$HOST && make -j3
   - sudo make install
   - cd ..
 # creating librarys' links and updating cache
@@ -51,16 +62,10 @@ before_script:
 
 script:
   - autoreconf -i
-  - ./configure
+  - ./configure --host=$HOST
   - make -j3
   - make check
   - make dist
 
 notifications:
   email: false
-
-  irc: 
-    channels:
-      - "chat.freenode.net#tox-dev"
-    on_success: always
-    on_failure: always
