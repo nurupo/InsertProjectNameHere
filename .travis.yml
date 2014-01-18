@@ -66,6 +66,6 @@ notifications:
 
   irc: 
     channels:
-      - "chat.freenode.net#tox-dev"
+      - "chat.freenode.net#Tox-Qt-GUI"
     on_success: always
     on_failure: always
