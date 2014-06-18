@@ -564,7 +564,7 @@ int main(int argc, char *argv[])
 
     if (enable_tcp_relay) {
         if (tcp_relay_port_count == 0) {
-            syslog(LOG_ERR, "No TCP relay ports read. Exiting.\n");
+            syslog(LOG_ERR, "TCP relay is enabled but no TCP relay ports read. Exiting.\n");
             return 1;
         }
 
@@ -622,7 +622,7 @@ int main(int argc, char *argv[])
 
     // Create a new SID for the child process
     if (setsid() < 0) {
-        syslog(LOG_ERR, "SID creation failure. Exiting.\n");
+        syslog(LOG_ERR, "Falied to create SID. Exiting.\n");
         return 1;
     }
 
