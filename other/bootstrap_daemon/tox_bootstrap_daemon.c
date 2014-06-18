@@ -156,7 +156,11 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
         }
 
         // the loop above skips invalid ports, so we adjust the allocated memory size
-        *tcp_relay_ports = realloc(*tcp_relay_ports, (*tcp_relay_port_count) * sizeof(uint16_t));
+        if ((*tcp_relay_port_count) == 0) {
+            free(*tcp_relay_ports);
+        } else {
+            *tcp_relay_ports = realloc(*tcp_relay_ports, (*tcp_relay_port_count) * sizeof(uint16_t));
+        }
 
         return;
     }
@@ -202,7 +206,11 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
     }
 
     // the loop above skips invalid ports, so we adjust the allocated memory size
-    *tcp_relay_ports = realloc(*tcp_relay_ports, (*tcp_relay_port_count) * sizeof(uint16_t));
+    if ((*tcp_relay_port_count) == 0) {
+        free(*tcp_relay_ports);
+    } else {
+        *tcp_relay_ports = realloc(*tcp_relay_ports, (*tcp_relay_port_count) * sizeof(uint16_t));
+    }
 }
 
 // Gets general config options
