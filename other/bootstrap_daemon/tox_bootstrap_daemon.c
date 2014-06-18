@@ -53,13 +53,13 @@
 
 
 #define DAEMON_NAME "tox_bootstrap_daemon"
-#define DAEMON_VERSION_NUMBER 2014051800UL // yyyymmmddvv format: yyyy year, mm month, dd day, vv version change count for that day
+#define DAEMON_VERSION_NUMBER 2014061800UL // yyyymmmddvv format: yyyy year, mm month, dd day, vv version change count for that day
 
 #define SLEEP_TIME_MILLISECONDS 30
 #define sleep usleep(1000*SLEEP_TIME_MILLISECONDS)
 
-#define DEFAULT_PID_FILE_PATH         ".tox_bootstrap_daemon.pid"
-#define DEFAULT_KEYS_FILE_PATH        ".tox_bootstrap_daemon.keys"
+#define DEFAULT_PID_FILE_PATH         "." DAEMON_NAME  ".pid"
+#define DEFAULT_KEYS_FILE_PATH        "." DAEMON_NAME  ".keys"
 #define DEFAULT_PORT                  33445
 #define DEFAULT_ENABLE_IPV6           0 // 1 - true, 0 - false
 #define DEFAULT_ENABLE_LAN_DISCOVERY  1 // 1 - true, 0 - false
