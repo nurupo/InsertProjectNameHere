@@ -21,12 +21,18 @@
  *
  */
 
-// system provided
-#include <arpa/inet.h>
-#include <syslog.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+// just a shorthand for Windows define
+#if defined(_WIN32) || defined(__WIN32__) || defined (WIN32)
+    #define WIN32
+#endif
+
+#ifndef WIN32
+    // system provided
+    #include <arpa/inet.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
 
 // C
 #include <stdio.h>
@@ -51,15 +57,16 @@
 #include "../bootstrap_node_packets.c"
 #include "../../testing/misc_tools.c"
 
-
 #define DAEMON_NAME "tox_bootstrap_daemon"
 #define DAEMON_VERSION_NUMBER 2014061800UL // yyyymmmddvv format: yyyy year, mm month, dd day, vv version change count for that day
 
 #define SLEEP_TIME_MILLISECONDS 30
-#define sleep usleep(1000*SLEEP_TIME_MILLISECONDS)
+#define SLEEP usleep(1000*SLEEP_TIME_MILLISECONDS)
 
-#define DEFAULT_PID_FILE_PATH         "." DAEMON_NAME  ".pid"
-#define DEFAULT_KEYS_FILE_PATH        "." DAEMON_NAME  ".keys"
+#ifndef WIN32
+    #define DEFAULT_PID_FILE_PATH     "." DAEMON_NAME ".pid"
+#endif
+#define DEFAULT_KEYS_FILE_PATH        "." DAEMON_NAME ".keys"
 #define DEFAULT_PORT                  33445
 #define DEFAULT_ENABLE_IPV6           0 // 1 - true, 0 - false
 #define DEFAULT_ENABLE_LAN_DISCOVERY  1 // 1 - true, 0 - false
@@ -72,6 +79,12 @@
 #define MIN_ALLOWED_PORT 1
 #define MAX_ALLOWED_PORT 65535
 
+#ifdef WIN32
+    #define LOG(type, ...) printf(__VA_ARGS__)
+#else
+    #include <syslog.h>
+    #define LOG(type, ...) syslog(type, __VA_ARGS__)
+#endif
 
 // Uses the already existing key or creates one if it didn't exist
 //
@@ -130,15 +143,15 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
     config_setting_t *ports_array = config_lookup(cfg, NAME_TCP_RELAY_PORTS);
 
     if (ports_array == NULL) {
-        syslog(LOG_WARNING, "No '%s' setting in the configuration file.\n", NAME_TCP_RELAY_PORTS);
-        syslog(LOG_WARNING, "Using default '%s':\n", NAME_TCP_RELAY_PORTS);
+        LOG(LOG_WARNING, "No '%s' setting in the configuration file.\n", NAME_TCP_RELAY_PORTS);
+        LOG(LOG_WARNING, "Using default '%s':\n", NAME_TCP_RELAY_PORTS);
 
         uint16_t default_ports[DEFAULT_TCP_RELAY_PORTS_COUNT] = {DEFAULT_TCP_RELAY_PORTS};
 
         int i;
 
         for (i = 0; i < DEFAULT_TCP_RELAY_PORTS_COUNT; i ++) {
-            syslog(LOG_WARNING, "Port #%d: %u\n", i, default_ports[i]);
+            LOG(LOG_WARNING, "Port #%d: %u\n", i, default_ports[i]);
         }
 
         // similar procedure to the one of reading config file below
@@ -148,7 +161,7 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
 
             (*tcp_relay_ports)[*tcp_relay_port_count] = default_ports[i];
             if ((*tcp_relay_ports)[*tcp_relay_port_count] < MIN_ALLOWED_PORT || (*tcp_relay_ports)[*tcp_relay_port_count] > MAX_ALLOWED_PORT) {
-                syslog(LOG_WARNING, "Port #%d: Invalid port: %u, should be in [%d, %d]. Skipping.\n", i, (*tcp_relay_ports)[*tcp_relay_port_count], MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
+                LOG(LOG_WARNING, "Port #%d: Invalid port: %u, should be in [%d, %d]. Skipping.\n", i, (*tcp_relay_ports)[*tcp_relay_port_count], MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
                 continue;
             }
 
@@ -166,13 +179,13 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
     }
 
     if (config_setting_is_array(ports_array) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "'%s' setting should be an array. Array syntax: 'setting = [value1, value2, ...]'.\n", NAME_TCP_RELAY_PORTS);
+        LOG(LOG_WARNING, "'%s' setting should be an array. Array syntax: 'setting = [value1, value2, ...]'.\n", NAME_TCP_RELAY_PORTS);
         return;
     }
 
     int config_port_count = config_setting_length(ports_array);
     if (config_port_count == 0) {
-        syslog(LOG_WARNING, "'%s' is empty.\n", NAME_TCP_RELAY_PORTS);
+        LOG(LOG_WARNING, "'%s' is empty.\n", NAME_TCP_RELAY_PORTS);
         return;
     }
 
@@ -187,18 +200,18 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
 
         if (elem == NULL) {
             // it's NULL if `ports_array` is not an array (we have that check ealier) or if `i` is out of range, which should not be
-            syslog(LOG_WARNING, "Port #%d: Something went wrong while parsing the port. Stopping reading ports.\n", i);
+            LOG(LOG_WARNING, "Port #%d: Something went wrong while parsing the port. Stopping reading ports.\n", i);
             break;
         }
 
         if (config_setting_is_number(elem) == CONFIG_FALSE) {
-            syslog(LOG_WARNING, "Port #%d: Not a number. Skipping.\n", i);
+            LOG(LOG_WARNING, "Port #%d: Not a number. Skipping.\n", i);
             continue;
         }
 
         (*tcp_relay_ports)[*tcp_relay_port_count] = config_setting_get_int(elem);
         if ((*tcp_relay_ports)[*tcp_relay_port_count] < MIN_ALLOWED_PORT || (*tcp_relay_ports)[*tcp_relay_port_count] > MAX_ALLOWED_PORT) {
-            syslog(LOG_WARNING, "Port #%d: Invalid port: %u, should be in [%d, %d]. Skipping.\n", i, (*tcp_relay_ports)[*tcp_relay_port_count], MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
+            LOG(LOG_WARNING, "Port #%d: Invalid port: %u, should be in [%d, %d]. Skipping.\n", i, (*tcp_relay_ports)[*tcp_relay_port_count], MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
             continue;
         }
 
@@ -221,15 +234,19 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
 //
 // returns 1 on success
 //         0 on failure, doesn't modify any data pointed by arguments
-
-int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_file_path, int *port, int *enable_ipv6,
-                       int *enable_lan_discovery, int *enable_tcp_relay, uint16_t **tcp_relay_ports, int *tcp_relay_port_count,
-                       int *enable_motd, char **motd)
+int get_general_config(char *cfg_file_path,
+#ifndef WIN32
+                       char **pid_file_path,
+#endif
+                       char **keys_file_path, int *port, int *enable_ipv6, int *enable_lan_discovery, int *enable_tcp_relay,
+                       uint16_t **tcp_relay_ports, int *tcp_relay_port_count, int *enable_motd, char **motd)
 {
     config_t cfg;
 
     const char *NAME_PORT                 = "port";
+#ifndef WIN32
     const char *NAME_PID_FILE_PATH        = "pid_file_path";
+#endif
     const char *NAME_KEYS_FILE_PATH       = "keys_file_path";
     const char *NAME_ENABLE_IPV6          = "enable_ipv6";
     const char *NAME_ENABLE_LAN_DISCOVERY = "enable_lan_discovery";
@@ -241,36 +258,38 @@ int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_fi
 
     // Read the file. If there is an error, report it and exit.
     if (config_read_file(&cfg, cfg_file_path) == CONFIG_FALSE) {
-        syslog(LOG_ERR, "%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+        LOG(LOG_ERR, "%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
         return 0;
     }
 
     // Get port
     if (config_lookup_int(&cfg, NAME_PORT, port) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_PORT);
-        syslog(LOG_WARNING, "Using default '%s': %d\n", NAME_PORT, DEFAULT_PORT);
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_PORT);
+        LOG(LOG_WARNING, "Using default '%s': %d\n", NAME_PORT, DEFAULT_PORT);
         *port = DEFAULT_PORT;
     }
 
+#ifndef WIN32
     // Get PID file location
     const char *tmp_pid_file;
 
     if (config_lookup_string(&cfg, NAME_PID_FILE_PATH, &tmp_pid_file) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_PID_FILE_PATH);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_PID_FILE_PATH, DEFAULT_PID_FILE_PATH);
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_PID_FILE_PATH);
+        LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_PID_FILE_PATH, DEFAULT_PID_FILE_PATH);
         tmp_pid_file = DEFAULT_PID_FILE_PATH;
     }
 
     *pid_file_path = malloc(strlen(tmp_pid_file) + 1);
     strcpy(*pid_file_path, tmp_pid_file);
+#endif
 
     // Get keys file location
     const char *tmp_keys_file;
 
     if (config_lookup_string(&cfg, NAME_KEYS_FILE_PATH, &tmp_keys_file) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_KEYS_FILE_PATH);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_KEYS_FILE_PATH, DEFAULT_KEYS_FILE_PATH);
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_KEYS_FILE_PATH);
+        LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_KEYS_FILE_PATH, DEFAULT_KEYS_FILE_PATH);
         tmp_keys_file = DEFAULT_KEYS_FILE_PATH;
     }
 
@@ -279,23 +298,23 @@ int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_fi
 
     // Get IPv6 option
     if (config_lookup_bool(&cfg, NAME_ENABLE_IPV6, enable_ipv6) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_IPV6);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_IPV6, DEFAULT_ENABLE_IPV6 ? "true" : "false");
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_IPV6);
+        LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_IPV6, DEFAULT_ENABLE_IPV6 ? "true" : "false");
         *enable_ipv6 = DEFAULT_ENABLE_IPV6;
     }
 
     // Get LAN discovery option
     if (config_lookup_bool(&cfg, NAME_ENABLE_LAN_DISCOVERY, enable_lan_discovery) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_LAN_DISCOVERY);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_LAN_DISCOVERY,
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_LAN_DISCOVERY);
+        LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_LAN_DISCOVERY,
                DEFAULT_ENABLE_LAN_DISCOVERY ? "true" : "false");
         *enable_lan_discovery = DEFAULT_ENABLE_LAN_DISCOVERY;
     }
 
     // Get TCP relay option
     if (config_lookup_bool(&cfg, NAME_ENABLE_TCP_RELAY, enable_tcp_relay) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_TCP_RELAY);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_TCP_RELAY,
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_TCP_RELAY);
+        LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_TCP_RELAY,
                DEFAULT_ENABLE_TCP_RELAY ? "true" : "false");
         *enable_tcp_relay = DEFAULT_ENABLE_TCP_RELAY;
     }
@@ -308,8 +327,8 @@ int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_fi
 
     // Get MOTD option
     if (config_lookup_bool(&cfg, NAME_ENABLE_MOTD, enable_motd) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_MOTD);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_MOTD,
+        LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_MOTD);
+        LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_MOTD,
                DEFAULT_ENABLE_MOTD ? "true" : "false");
         *enable_motd = DEFAULT_ENABLE_MOTD;
     }
@@ -319,8 +338,8 @@ int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_fi
         const char *tmp_motd;
 
         if (config_lookup_string(&cfg, NAME_MOTD, &tmp_motd) == CONFIG_FALSE) {
-            syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_MOTD);
-            syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_MOTD, DEFAULT_MOTD);
+            LOG(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_MOTD);
+            LOG(LOG_WARNING, "Using default '%s': %s\n", NAME_MOTD, DEFAULT_MOTD);
             tmp_motd = DEFAULT_MOTD;
         }
         size_t tmp_motd_length = strlen(tmp_motd) + 1;
@@ -332,30 +351,32 @@ int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_fi
 
     config_destroy(&cfg);
 
-    syslog(LOG_DEBUG, "Successfully read:\n");
-    syslog(LOG_DEBUG, "'%s': %s\n", NAME_PID_FILE_PATH,        *pid_file_path);
-    syslog(LOG_DEBUG, "'%s': %s\n", NAME_KEYS_FILE_PATH,       *keys_file_path);
-    syslog(LOG_DEBUG, "'%s': %d\n", NAME_PORT,                 *port);
-    syslog(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_IPV6,          *enable_ipv6          ? "true" : "false");
-    syslog(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_LAN_DISCOVERY, *enable_lan_discovery ? "true" : "false");
+    LOG(LOG_DEBUG, "Successfully read:\n");
+#ifndef WIN32
+    LOG(LOG_DEBUG, "'%s': %s\n", NAME_PID_FILE_PATH,        *pid_file_path);
+#endif
+    LOG(LOG_DEBUG, "'%s': %s\n", NAME_KEYS_FILE_PATH,       *keys_file_path);
+    LOG(LOG_DEBUG, "'%s': %d\n", NAME_PORT,                 *port);
+    LOG(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_IPV6,          *enable_ipv6          ? "true" : "false");
+    LOG(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_LAN_DISCOVERY, *enable_lan_discovery ? "true" : "false");
 
-    syslog(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_TCP_RELAY,     *enable_tcp_relay     ? "true" : "false");
+    LOG(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_TCP_RELAY,     *enable_tcp_relay     ? "true" : "false");
     // show info about tcp ports only if tcp relay is enabled
     if (*enable_tcp_relay) {
         if (*tcp_relay_port_count == 0) {
-            syslog(LOG_DEBUG, "No TCP ports could be read.\n");
+            LOG(LOG_DEBUG, "No TCP ports could be read.\n");
         } else {
-            syslog(LOG_DEBUG, "Read %d TCP ports:\n", *tcp_relay_port_count);
+            LOG(LOG_DEBUG, "Read %d TCP ports:\n", *tcp_relay_port_count);
             int i;
             for (i = 0; i < *tcp_relay_port_count; i ++) {
-                syslog(LOG_DEBUG, "Port #%d: %u\n", i, (*tcp_relay_ports)[i]);
+                LOG(LOG_DEBUG, "Port #%d: %u\n", i, (*tcp_relay_ports)[i]);
             }
         }
     }
 
-    syslog(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_MOTD,          *enable_motd          ? "true" : "false");
+    LOG(LOG_DEBUG, "'%s': %s\n", NAME_ENABLE_MOTD,          *enable_motd          ? "true" : "false");
     if (*enable_motd) {
-        syslog(LOG_DEBUG, "'%s': %s\n", NAME_MOTD, *motd);
+        LOG(LOG_DEBUG, "'%s': %s\n", NAME_MOTD, *motd);
     }
 
     return 1;
@@ -379,7 +400,7 @@ int bootstrap_from_config(char *cfg_file_path, DHT *dht, int enable_ipv6)
     config_init(&cfg);
 
     if (config_read_file(&cfg, cfg_file_path) == CONFIG_FALSE) {
-        syslog(LOG_ERR, "%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+        LOG(LOG_ERR, "%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
         return 0;
     }
@@ -387,13 +408,13 @@ int bootstrap_from_config(char *cfg_file_path, DHT *dht, int enable_ipv6)
     config_setting_t *node_list = config_lookup(&cfg, NAME_BOOTSTRAP_NODES);
 
     if (node_list == NULL) {
-        syslog(LOG_WARNING, "No '%s' setting in the configuration file. Skipping bootstrapping.\n", NAME_BOOTSTRAP_NODES);
+        LOG(LOG_WARNING, "No '%s' setting in the configuration file. Skipping bootstrapping.\n", NAME_BOOTSTRAP_NODES);
         config_destroy(&cfg);
         return 1;
     }
 
     if (config_setting_length(node_list) == 0) {
-        syslog(LOG_WARNING, "No bootstrap nodes found. Skipping bootstrapping.\n");
+        LOG(LOG_WARNING, "No bootstrap nodes found. Skipping bootstrapping.\n");
         config_destroy(&cfg);
         return 1;
     }
@@ -417,29 +438,29 @@ int bootstrap_from_config(char *cfg_file_path, DHT *dht, int enable_ipv6)
 
         // Check that all settings are present
         if (config_setting_lookup_string(node, NAME_PUBLIC_KEY, &bs_public_key) == CONFIG_FALSE) {
-            syslog(LOG_WARNING, "Bootstrap node #%d: Couldn't find '%s' setting. Skipping the node.\n", i, NAME_PUBLIC_KEY);
+            LOG(LOG_WARNING, "Bootstrap node #%d: Couldn't find '%s' setting. Skipping the node.\n", i, NAME_PUBLIC_KEY);
             goto next;
         }
 
         if (config_setting_lookup_int(node, NAME_PORT, &bs_port) == CONFIG_FALSE) {
-            syslog(LOG_WARNING, "Bootstrap node #%d: Couldn't find '%s' setting. Skipping the node.\n", i, NAME_PORT);
+            LOG(LOG_WARNING, "Bootstrap node #%d: Couldn't find '%s' setting. Skipping the node.\n", i, NAME_PORT);
             goto next;
         }
 
         if (config_setting_lookup_string(node, NAME_ADDRESS, &bs_address) == CONFIG_FALSE) {
-            syslog(LOG_WARNING, "Bootstrap node #%d: Couldn't find '%s' setting. Skipping the node.\n", i, NAME_ADDRESS);
+            LOG(LOG_WARNING, "Bootstrap node #%d: Couldn't find '%s' setting. Skipping the node.\n", i, NAME_ADDRESS);
             goto next;
         }
 
         // Process settings
         if (strlen(bs_public_key) != crypto_box_PUBLICKEYBYTES*2) {
-            syslog(LOG_WARNING, "Bootstrap node #%d: Invalid '%s': %s. Skipping the node.\n", i, NAME_PUBLIC_KEY,
+            LOG(LOG_WARNING, "Bootstrap node #%d: Invalid '%s': %s. Skipping the node.\n", i, NAME_PUBLIC_KEY,
                    bs_public_key);
             goto next;
         }
 
         if (bs_port < MIN_ALLOWED_PORT || bs_port > MAX_ALLOWED_PORT) {
-            syslog(LOG_WARNING, "Bootstrap node #%d: Invalid '%s': %d, should be in [%d, %d]. Skipping the node.\n", i, NAME_PORT, bs_port, MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
+            LOG(LOG_WARNING, "Bootstrap node #%d: Invalid '%s': %d, should be in [%d, %d]. Skipping the node.\n", i, NAME_PORT, bs_port, MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
             goto next;
         }
 
@@ -449,11 +470,11 @@ int bootstrap_from_config(char *cfg_file_path, DHT *dht, int enable_ipv6)
         free(bs_public_key_bin);
 
         if (!address_resolved) {
-            syslog(LOG_WARNING, "Bootstrap node #%d: Invalid '%s': %s. Skipping the node.\n", i, NAME_ADDRESS, bs_address);
+            LOG(LOG_WARNING, "Bootstrap node #%d: Invalid '%s': %s. Skipping the node.\n", i, NAME_ADDRESS, bs_address);
             goto next;
         }
 
-        syslog(LOG_DEBUG, "Successfully added bootstrap node #%d: %s:%d %s\n", i, bs_address, bs_port, bs_public_key);
+        LOG(LOG_DEBUG, "Successfully added bootstrap node #%d: %s:%d %s\n", i, bs_address, bs_port, bs_public_key);
 
 next:
         // config_setting_lookup_string() allocates string inside and doesn't allow us to free it direcly
@@ -481,24 +502,29 @@ void print_public_key(uint8_t *public_key)
         index += sprintf(buffer + index, "%02hhX", public_key[i]);
     }
 
-    syslog(LOG_INFO, "Public Key: %s\n", buffer);
+    LOG(LOG_INFO, "Public Key: %s\n", buffer);
 
     return;
 }
 
 int main(int argc, char *argv[])
 {
+#ifndef WIN32
     openlog(DAEMON_NAME, LOG_NOWAIT | LOG_PID, LOG_DAEMON);
+#endif
 
-    syslog(LOG_INFO, "Running \"%s\" version %lu.\n", DAEMON_NAME, DAEMON_VERSION_NUMBER);
+    LOG(LOG_INFO, "Running \"%s\" version %lu.\n", DAEMON_NAME, DAEMON_VERSION_NUMBER);
 
     if (argc < 2) {
-        syslog(LOG_ERR, "Please specify a path to a configuration file as the first argument. Exiting.\n");
+        LOG(LOG_ERR, "Please specify a path to a configuration file as the first argument. Exiting.\n");
         return 1;
     }
 
     char *cfg_file_path = argv[1];
-    char *pid_file_path, *keys_file_path;
+#ifndef WIN32
+    char *pid_file_path;
+#endif
+    char *keys_file_path;
     int port;
     int enable_ipv6;
     int enable_lan_discovery;
@@ -508,22 +534,28 @@ int main(int argc, char *argv[])
     int enable_motd;
     char *motd;
 
-    if (get_general_config(cfg_file_path, &pid_file_path, &keys_file_path, &port, &enable_ipv6, &enable_lan_discovery, &enable_tcp_relay, &tcp_relay_ports, &tcp_relay_port_count, &enable_motd, &motd)) {
-        syslog(LOG_DEBUG, "General config read successfully\n");
+    if (get_general_config(cfg_file_path,
+#ifndef WIN32
+                           &pid_file_path,
+#endif
+                           &keys_file_path, &port, &enable_ipv6, &enable_lan_discovery, &enable_tcp_relay, &tcp_relay_ports, &tcp_relay_port_count, &enable_motd, &motd)) {
+        LOG(LOG_DEBUG, "General config read successfully\n");
     } else {
-        syslog(LOG_ERR, "Couldn't read config file: %s. Exiting.\n", cfg_file_path);
+        LOG(LOG_ERR, "Couldn't read config file: %s. Exiting.\n", cfg_file_path);
         return 1;
     }
 
     if (port < MIN_ALLOWED_PORT || port > MAX_ALLOWED_PORT) {
-        syslog(LOG_ERR, "Invalid port: %d, should be in [%d, %d]. Exiting.\n", port, MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
+        LOG(LOG_ERR, "Invalid port: %d, should be in [%d, %d]. Exiting.\n", port, MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
         return 1;
     }
 
+#ifndef WIN32
     // Check if the PID file exists
     if (fopen(pid_file_path, "r")) {
-        syslog(LOG_ERR, "Another instance of the daemon is already running, PID file %s exists.\n", pid_file_path);
+        LOG(LOG_ERR, "Another instance of the daemon is already running, PID file %s exists.\n", pid_file_path);
     }
+#endif
 
     IP ip;
     ip_init(&ip, enable_ipv6);
@@ -531,7 +563,7 @@ int main(int argc, char *argv[])
     DHT *dht = new_DHT(new_networking(ip, port));
 
     if (dht == NULL) {
-        syslog(LOG_ERR, "Couldn't initialize Tox DHT instance. Exiting.\n");
+        LOG(LOG_ERR, "Couldn't initialize Tox DHT instance. Exiting.\n");
         return 1;
     }
 
@@ -539,32 +571,34 @@ int main(int argc, char *argv[])
     Onion_Announce *onion_a = new_onion_announce(dht);
 
     if (!(onion && onion_a)) {
-        syslog(LOG_ERR, "Couldn't initialize Tox Onion. Exiting.\n");
+        LOG(LOG_ERR, "Couldn't initialize Tox Onion. Exiting.\n");
         return 1;
     }
 
     if (enable_motd) {
         if (bootstrap_set_callbacks(dht->net, DAEMON_VERSION_NUMBER, (uint8_t*)motd, strlen(motd) + 1) == 0) {
-            syslog(LOG_DEBUG, "Set MOTD successfully.\n");
+            LOG(LOG_DEBUG, "Set MOTD successfully.\n");
         } else {
-            syslog(LOG_ERR, "Couldn't set MOTD: %s. Exiting.\n", motd);
+            LOG(LOG_ERR, "Couldn't set MOTD: %s. Exiting.\n", motd);
             return 1;
         }
         free(motd);
     }
 
     if (manage_keys(dht, keys_file_path)) {
-        syslog(LOG_DEBUG, "Keys are managed successfully.\n");
+        LOG(LOG_DEBUG, "Keys are managed successfully.\n");
     } else {
-        syslog(LOG_ERR, "Couldn't read/write: %s. Exiting.\n", keys_file_path);
+        LOG(LOG_ERR, "Couldn't read/write: %s. Exiting.\n", keys_file_path);
         return 1;
     }
+
+    free(keys_file_path);
 
     TCP_Server *tcp_server = NULL;
 
     if (enable_tcp_relay) {
         if (tcp_relay_port_count == 0) {
-            syslog(LOG_ERR, "TCP relay is enabled but no TCP relay ports read. Exiting.\n");
+            LOG(LOG_ERR, "TCP relay is enabled but no TCP relay ports read. Exiting.\n");
             return 1;
         }
 
@@ -574,46 +608,46 @@ int main(int argc, char *argv[])
         free(tcp_relay_ports);
 
         if (tcp_server != NULL) {
-            syslog(LOG_DEBUG, "Initialized Tox TCP server successfully.\n");
+            LOG(LOG_DEBUG, "Initialized Tox TCP server successfully.\n");
         } else {
-            syslog(LOG_ERR, "Couldn't initialize Tox TCP server. Exiting.\n");
+            LOG(LOG_ERR, "Couldn't initialize Tox TCP server. Exiting.\n");
             return 1;
         }
     }
 
     if (bootstrap_from_config(cfg_file_path, dht, enable_ipv6)) {
-        syslog(LOG_DEBUG, "List of bootstrap nodes read successfully.\n");
+        LOG(LOG_DEBUG, "List of bootstrap nodes read successfully.\n");
     } else {
-        syslog(LOG_ERR, "Couldn't read list of bootstrap nodes in %s. Exiting.\n", cfg_file_path);
+        LOG(LOG_ERR, "Couldn't read list of bootstrap nodes in %s. Exiting.\n", cfg_file_path);
         return 1;
     }
 
     print_public_key(dht->self_public_key);
 
+#ifndef WIN32
     // Write the PID file
     FILE *pidf = fopen(pid_file_path, "a+");
 
     if (pidf == NULL) {
-        syslog(LOG_ERR, "Couldn't open the PID file for writing: %s. Exiting.\n", pid_file_path);
+        LOG(LOG_ERR, "Couldn't open the PID file for writing: %s. Exiting.\n", pid_file_path);
         return 1;
     }
 
     free(pid_file_path);
-    free(keys_file_path);
 
     // Fork off from the parent process
     pid_t pid = fork();
 
     if (pid < 0) {
         fclose(pidf);
-        syslog(LOG_ERR, "Forking failed. Exiting.\n");
+        LOG(LOG_ERR, "Forking failed. Exiting.\n");
         return 1;
     }
 
     if (pid > 0) {
         fprintf(pidf, "%d ", pid);
         fclose(pidf);
-        syslog(LOG_DEBUG, "Forked successfully: PID: %d.\n", pid);
+        LOG(LOG_DEBUG, "Forked successfully: PID: %d.\n", pid);
         return 0;
     }
 
@@ -622,15 +656,16 @@ int main(int argc, char *argv[])
 
     // Create a new SID for the child process
     if (setsid() < 0) {
-        syslog(LOG_ERR, "Falied to create SID. Exiting.\n");
+        LOG(LOG_ERR, "Falied to create SID. Exiting.\n");
         return 1;
     }
 
     // Change the current working directory
     if ((chdir("/")) < 0) {
-        syslog(LOG_ERR, "Couldn't change working directory to '/'. Exiting.\n");
+        LOG(LOG_ERR, "Couldn't change working directory to '/'. Exiting.\n");
         return 1;
     }
+#endif
 
     // Go quiet
     close(STDOUT_FILENO);
@@ -644,7 +679,7 @@ int main(int argc, char *argv[])
 
     if (enable_lan_discovery) {
         LANdiscovery_init(dht);
-        syslog(LOG_DEBUG, "Initialized LAN discovery.\n");
+        LOG(LOG_DEBUG, "Initialized LAN discovery.\n");
     }
 
     while (1) {
@@ -662,11 +697,11 @@ int main(int argc, char *argv[])
         networking_poll(dht->net);
 
         if (waiting_for_dht_connection && DHT_isconnected(dht)) {
-            syslog(LOG_DEBUG, "Connected to other bootstrap node successfully.\n");
+            LOG(LOG_DEBUG, "Connected to other bootstrap node successfully.\n");
             waiting_for_dht_connection = 0;
         }
 
-        sleep;
+        SLEEP;
     }
 
     return 1;
