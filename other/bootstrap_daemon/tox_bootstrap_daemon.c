@@ -83,11 +83,11 @@ int info_reply_callback(const IP_Port *source, const uint8_t *packet, uint32_t l
 
     time_t current;
     time(&current);
-    
+
     double diffSeconds = difftime(current, start);
-    
-    int count = sprintf(buff, "Welcome, stranger #%llu. I'm up for %ld %02dh %02dm %02ds, running since ", visitors, (long)time/60/60/24, (int)diffSeconds/60/60%24, (int)diffSeconds/60%60, (int)diffSeconds%60);
-    
+
+    int count = sprintf(buff, "Welcome, stranger #%llu. I'm up for %ldd %02dh %02dm %02ds, running since ", visitors, (long)diffSeconds/60/60/24, (int)diffSeconds/60/60%24, (int)diffSeconds/60%60, (int)diffSeconds%60);
+
     if (count > MAX_MOTD_LENGTH - (15 + 84 + 1)) {
         if (count < MAX_MOTD_LENGTH * 4) {
             return;
@@ -98,16 +98,16 @@ int info_reply_callback(const IP_Port *source, const uint8_t *packet, uint32_t l
             exit(1);
         }
     }
-            
+
     struct tm *utc;
     utc = gmtime(&start);
-    
+
     size_t count2 = strftime(buff + count, 15 + 1, "%b %d %H:%M:%S", utc); // fixed length of 15 + null
-    
+
     sprintf(buff + count + count2, " UTC. If I get outdated, please ping my maintainer at nurupo.contributions@gmail.com"); // fixed length of 84 + null
-    
+
     bootstrap_info_set_motd(buff, strlen(buff));
-    
+
     return 1;
 }
 
