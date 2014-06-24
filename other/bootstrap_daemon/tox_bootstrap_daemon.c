@@ -67,7 +67,8 @@
 #define DEFAULT_ENABLE_TCP_RELAY      1 // 1 - true, 0 - false
 #define DEFAULT_TCP_RELAY_PORTS       443, 3389, 33445 // comma-separated list of ports. make sure to adjust DEFAULT_TCP_RELAY_PORTS_COUNT accordingly
 #define DEFAULT_TCP_RELAY_PORTS_COUNT 3
-#define DEFAULT_ENABLE_MOTD           1 // 1 - true, 0 - false
+#define DEFAULT_ENABLE_INFO_REPLIES   1 // 1 - true, 0 - false
+#define DEFAULT_USE_DEFAULT_INFO_MOTD 0
 #define DEFAULT_MOTD                  DAEMON_NAME
 
 #define MIN_ALLOWED_PORT 1
@@ -78,6 +79,7 @@ time_t start;
 int info_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
 {
     char buff[MAX_MOTD_LENGTH * 4]; // a bit bigger buffer to prevent buffer overflows
+
     static unsigned long long visitors = 0;
     visitors ++;
 
@@ -263,18 +265,20 @@ void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_ports, int
 
 int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_file_path, int *port, int *enable_ipv6,
                        int *enable_lan_discovery, int *enable_tcp_relay, uint16_t **tcp_relay_ports, int *tcp_relay_port_count,
-                       int *enable_motd, char **motd)
+                       int *enable_info_replies, int *use_default_info_motd, char **default_info_motd_email, char **custom_info_motd)
 {
     config_t cfg;
 
-    const char *NAME_PORT                 = "port";
-    const char *NAME_PID_FILE_PATH        = "pid_file_path";
-    const char *NAME_KEYS_FILE_PATH       = "keys_file_path";
-    const char *NAME_ENABLE_IPV6          = "enable_ipv6";
-    const char *NAME_ENABLE_LAN_DISCOVERY = "enable_lan_discovery";
-    const char *NAME_ENABLE_TCP_RELAY     = "enable_tcp_relay";
-    const char *NAME_ENABLE_MOTD          = "enable_motd";
-    const char *NAME_MOTD                 = "motd";
+    const char *NAME_PORT                    = "port";
+    const char *NAME_PID_FILE_PATH           = "pid_file_path";
+    const char *NAME_KEYS_FILE_PATH          = "keys_file_path";
+    const char *NAME_ENABLE_IPV6             = "enable_ipv6";
+    const char *NAME_ENABLE_LAN_DISCOVERY    = "enable_lan_discovery";
+    const char *NAME_ENABLE_TCP_RELAY        = "enable_tcp_relay";
+    const char *NAME_ENABLE_INFO_REPLIES     = "enable_info_replies";
+    const char *NAME_USE_DEFAULT_INFO_MOTD   = "use_default_info_motd";
+    const char *NAME_DEFAULT_INFO_MOTD_EMAIL = "default_info_motd_email";
+    const char *NAME_CUSTOM_INFO_MOTD        = "custom_info_motd";
 
     config_init(&cfg);
 
@@ -345,14 +349,24 @@ int get_general_config(char *cfg_file_path, char **pid_file_path, char **keys_fi
         *tcp_relay_port_count = 0;
     }
 
-    // Get MOTD option
-    if (config_lookup_bool(&cfg, NAME_ENABLE_MOTD, enable_motd) == CONFIG_FALSE) {
-        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_MOTD);
-        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_MOTD,
-               DEFAULT_ENABLE_MOTD ? "true" : "false");
-        *enable_motd = DEFAULT_ENABLE_MOTD;
+    // Get info replies option
+    if (config_lookup_bool(&cfg, NAME_ENABLE_INFO_REPLIES, enable_info_replies) == CONFIG_FALSE) {
+        syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_ENABLE_INFO_REPLIES);
+        syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_ENABLE_INFO_REPLIES,
+               DEFAULT_ENABLE_INFO_REPLIES ? "true" : "false");
+        *enable_info_replies = DEFAULT_ENABLE_INFO_REPLIES;
     }
 
+    if (*enable_info_replies) {
+
+        // Get default info MOTD option
+        if (config_lookup_bool(&cfg, NAME_USE_DEFAULT_INFO_MOTD, use_default_info_motd) == CONFIG_FALSE) {
+            syslog(LOG_WARNING, "No '%s' setting in configuration file.\n", NAME_USE_DEFAULT_INFO_MOTD);
+            syslog(LOG_WARNING, "Using default '%s': %s\n", NAME_USE_DEFAULT_INFO_MOTD,
+                   DEFAULT_USE_DEFAULT_INFO_MOTD ? "true" : "false");
+            *use_default_info_motd = DEFAULT_USE_DEFAULT_INFO_MOTD;
+        }
+    }
     if (*enable_motd) {
         // Get MOTD
         const char *tmp_motd;
