@@ -76,7 +76,7 @@
 
 time_t start;
 
-int info_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
+int info_reply_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
 {
     char buff[MAX_MOTD_LENGTH * 4]; // a bit bigger buffer to prevent buffer overflows
 
@@ -88,7 +88,7 @@ int info_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
     
     double diffSeconds = difftime(current, start);
     
-    int count = sprintf(buff, "Welcome, stranger #%llu. I'm up for %ld %02dh %02dm %02ds, running since ", visitors, (long)time/60/60/24, diffSeconds/60/60%24, diffSeconds/60%60, diffSeconds%60);
+    int count = sprintf(buff, "Welcome, stranger #%llu. I'm up for %ld %02dh %02dm %02ds, running since ", visitors, (long)time/60/60/24, (int)diffSeconds/60/60%24, (int)diffSeconds/60%60, (int)diffSeconds%60);
     
     if (count > MAX_MOTD_LENGTH - (15 + 84 + 1)) {
         if (count < MAX_MOTD_LENGTH * 4) {
@@ -104,7 +104,7 @@ int info_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
     struct tm *utc;
     utc = gmtime(&start);
     
-    size_t count2 = strftime(buff + count, "%b %d %H:%M:%S", utc); // fixed length of 15 + null
+    size_t count2 = strftime(buff + count, 15 + 1, "%b %d %H:%M:%S", utc); // fixed length of 15 + null
     
     sprintf(buff + count + count2, " UTC. If I get outdated, please ping my maintainer at nurupo.contributions@gmail.com"); // fixed length of 84 + null
     
@@ -609,7 +609,7 @@ int main(int argc, char *argv[])
 
     if (enable_motd) {
         if (bootstrap_info_init(dht->net, DAEMON_VERSION_NUMBER) == 0) { //(uint8_t *)motd, strlen(motd) + 1
-            bootstrap_info_set_callback(&info_callback);
+            bootstrap_info_set_callback(&info_reply_callback);
             syslog(LOG_DEBUG, "Set MOTD successfully.\n");
         } else {
             syslog(LOG_ERR, "Couldn't set MOTD: %s. Exiting.\n", motd);
