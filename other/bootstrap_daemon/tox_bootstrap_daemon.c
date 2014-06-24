@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 // 3rd party
 #include <libconfig.h>
@@ -71,6 +72,44 @@
 
 #define MIN_ALLOWED_PORT 1
 #define MAX_ALLOWED_PORT 65535
+
+time_t start;
+
+int info_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
+{
+    char buff[MAX_MOTD_LENGTH * 4]; // a bit bigger buffer to prevent buffer overflows
+    static unsigned long long visitors = 0;
+    visitors ++;
+
+    time_t current;
+    time(&current);
+    
+    double diffSeconds = difftime(current, start);
+    
+    int count = sprintf(buff, "Welcome, stranger #%llu. I'm up for %ld %02dh %02dm %02ds, running since ", visitors, (long)time/60/60/24, diffSeconds/60/60%24, diffSeconds/60%60, diffSeconds%60);
+    
+    if (count > MAX_MOTD_LENGTH - (15 + 84 + 1)) {
+        if (count < MAX_MOTD_LENGTH * 4) {
+            return;
+        } else {
+            // we got a buffer overflow
+            // shouldn't happen
+            syslog(LOG_ERR, "We got a buffer overflow while handling info response. Exiting.\n");
+            exit(1);
+        }
+    }
+            
+    struct tm *utc;
+    utc = gmtime(&start);
+    
+    size_t count2 = strftime(buff + count, "%b %d %H:%M:%S", utc); // fixed length of 15 + null
+    
+    sprintf(buff + count + count2, " UTC. If I get outdated, please ping my maintainer at nurupo.contributions@gmail.com"); // fixed length of 84 + null
+    
+    bootstrap_info_set_motd(buff, strlen(buff));
+    
+    return 1;
+}
 
 
 // Uses the already existing key or creates one if it didn't exist
@@ -493,6 +532,8 @@ void print_public_key(uint8_t *public_key)
 
 int main(int argc, char *argv[])
 {
+    time(&start);
+
     openlog(DAEMON_NAME, LOG_NOWAIT | LOG_PID, LOG_DAEMON);
 
     syslog(LOG_INFO, "Running \"%s\" version %lu.\n", DAEMON_NAME, DAEMON_VERSION_NUMBER);
@@ -553,7 +594,8 @@ int main(int argc, char *argv[])
     }
 
     if (enable_motd) {
-        if (bootstrap_set_callbacks(dht->net, DAEMON_VERSION_NUMBER, (uint8_t *)motd, strlen(motd) + 1) == 0) {
+        if (bootstrap_info_init(dht->net, DAEMON_VERSION_NUMBER) == 0) { //(uint8_t *)motd, strlen(motd) + 1
+            bootstrap_info_set_callback(&info_callback);
             syslog(LOG_DEBUG, "Set MOTD successfully.\n");
         } else {
             syslog(LOG_ERR, "Couldn't set MOTD: %s. Exiting.\n", motd);

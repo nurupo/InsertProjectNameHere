@@ -30,6 +30,10 @@
 static uint32_t bootstrap_version;
 static uint8_t bootstrap_motd[MAX_MOTD_LENGTH];
 static uint16_t bootstrap_motd_length;
+static int network_handler_registered = 0;
+static int info_callback_is_set = 0;
+
+int (*info_callback)(const *IP_Port source, const uint8_t *packet, uint32_t length);
 
 /* To request this packet just send a packet of length INFO_REQUEST_PACKET_LENGTH
  * with the first byte being BOOTSTRAP_INFO_PACKET_ID
@@ -38,6 +42,12 @@ static int handle_info_request(void *object, IP_Port source, const uint8_t *pack
 {
     if (length != INFO_REQUEST_PACKET_LENGTH)
         return 1;
+
+    if (info_callback_is_set) {
+        if (info_callback(&source, packet, length) <= 0) {
+            return 1;
+        }
+    }
 
     uint8_t data[1 + sizeof(bootstrap_version) + MAX_MOTD_LENGTH];
     data[0] = BOOTSTRAP_INFO_PACKET_ID;
@@ -51,15 +61,34 @@ static int handle_info_request(void *object, IP_Port source, const uint8_t *pack
     return 1;
 }
 
-int bootstrap_set_callbacks(Networking_Core *net, uint32_t version, uint8_t *motd, uint16_t motd_length)
+int bootstrap_info_init(Networking_Core *net, uint32_t version)
+{
+    if (bootstrap_info_update("", 0) == -1)
+        return -1;
+
+    bootstrap_version = htonl(version);
+
+    if (!network_handler_registered) {
+        networking_registerhandler(net, BOOTSTRAP_INFO_PACKET_ID, &handle_info_request, net);
+        network_handler_registered = 1;
+    }
+
+    return 0;
+}
+
+int bootstrap_info_set_motd(const uint8_t *motd, uint16_t motd_length)
 {
     if (motd_length > MAX_MOTD_LENGTH)
         return -1;
 
-    bootstrap_version = htonl(version);
     memcpy(bootstrap_motd, motd, motd_length);
     bootstrap_motd_length = motd_length;
 
-    networking_registerhandler(net, BOOTSTRAP_INFO_PACKET_ID, &handle_info_request, net);
     return 0;
+}
+
+void bootstrap_info_set_callback(int (*function)(const *IP_Port source, const uint8_t *packet, uint32_t length))
+{
+    info_callback = function;
+    info_callback_is_set = 1;
 }
