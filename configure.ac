@@ -353,16 +353,6 @@ if test "x$WANT_NACL" = "xyes"; then
         )
     fi
 
-    if (test -f "$NACL_SEARCH_LIBS/cpucycles.o") &&
-       (test -f "$NACL_SEARCH_LIBS/randombytes.o"); then
-        NACL_OBJECTS="$NACL_SEARCH_LIBS/cpucycles.o $NACL_SEARCH_LIBS/randombytes.o"
-        if test "x$ADD_NACL_OBJECTS_TO_PKGCONFIG" = "xyes"; then
-            NACL_OBJECTS_PKGCONFIG="$NACL_OBJECTS"
-        fi
-    else
-        AC_MSG_ERROR([required NaCl object files cpucycles.o randombytes.o not found, please specify their location using the --with-nacl-libs parameter])
-    fi
-
     LDFLAGS="$LDFLAGS_SAVE"
     AC_SUBST(NACL_LIBS)
     AC_SUBST(NACL_LDFLAGS)
