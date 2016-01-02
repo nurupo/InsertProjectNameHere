@@ -25,6 +25,10 @@
 
 #include "network.h"
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifndef VANILLA_NACL
 /* We use libsodium by default. */
 #include <sodium.h>
