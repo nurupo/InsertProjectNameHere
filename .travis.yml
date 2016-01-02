@@ -12,7 +12,7 @@ before_script:
 script:
   - autoreconf -i
   - CFLAGS="-Ofast -Wall -Wextra" ./configure --enable-daemon --enable-ntox --enable-nacl --with-nacl-headers=/usr/include/nacl
-  - make -j3
+  - make -j1
   - make check
   - make dist
 
