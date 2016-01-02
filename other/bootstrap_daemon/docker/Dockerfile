@@ -18,15 +18,16 @@ RUN apt-get update && apt-get install -y \
 
 # install toxcore and daemon
 WORKDIR /root/
-RUN git clone https://github.com/irungentoo/toxcore
-WORKDIR /root/toxcore/
+RUN git clone https://github.com/nurupo/InsertProjectNameHere
+WORKDIR /root/InsertProjectNameHere
+RUN git checkout tox-bootstrapd-docker-support-fork
 RUN ./autogen.sh
 RUN ./configure --enable-daemon
 RUN make -j`nproc`
 RUN make install -j`nproc`
 RUN ldconfig
 
-WORKDIR /root/toxcore/other/bootstrap_daemon/
+WORKDIR /root/InsertProjectNameHere/other/bootstrap_daemon/
 
 # add new user
 RUN useradd --home-dir /var/lib/tox-bootstrapd --create-home \
