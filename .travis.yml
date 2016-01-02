@@ -6,6 +6,7 @@ compiler:
   - clang
 
 before_script:
+  - sudo apt-get update -qq
   - sudo apt-get install libnacl-dev libconfig-dev libvpx-dev libopus-dev -qq
 
 script:
