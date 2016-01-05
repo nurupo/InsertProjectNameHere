@@ -30,6 +30,12 @@
 
 #define MAX_MOTD_LENGTH 256 /* I recommend you use a maximum of 96 bytes. The hard maximum is this though. */
 
-int bootstrap_set_callbacks(Networking_Core *net, uint32_t version, uint8_t *motd, uint16_t motd_length);
+int (*info_callback)(const IP_Port *source, const uint8_t *packet, uint32_t length);
+
+int bootstrap_info_set_motd(const uint8_t *motd, uint16_t motd_length);
+
+int bootstrap_info_init(Networking_Core *net, uint32_t version);
+
+void bootstrap_info_set_callback(int (*function)(const IP_Port *source, const uint8_t *packet, uint32_t length));
 
 #endif // BOOTSTRAP_NODE_PACKETS_H

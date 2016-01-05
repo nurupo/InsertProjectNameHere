@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 // toxcore
 #include "../../../toxcore/LAN_discovery.h"
@@ -46,6 +47,45 @@
 
 
 #define SLEEP_MILLISECONDS(MS) usleep(1000*MS)
+
+time_t start;
+
+int info_reply_callback(const IP_Port *source, const uint8_t *packet, uint32_t length)
+{
+    char buff[MAX_MOTD_LENGTH * 4]; // a bit bigger buffer to prevent buffer overflows
+    static unsigned long long visitors = 0;
+    visitors ++;
+
+    time_t current;
+    time(&current);
+
+    double diffSeconds = difftime(current, start);
+
+    int count = sprintf(buff, "Welcome, stranger #%llu. I'm up for %ldd %02dh %02dm %02ds, running since ", visitors, (long)diffSeconds/60/60/24, (int)diffSeconds/60/60%24, (int)diffSeconds/60%60, (int)diffSeconds%60);
+
+    if (count > MAX_MOTD_LENGTH - (15 + 84 + 1)) {
+        if (count < MAX_MOTD_LENGTH * 4) {
+            return;
+        } else {
+            // we got a buffer overflow
+            // shouldn't happen
+            memset(buff, 0, count);
+            syslog(LOG_LEVEL_ERROR, "We got a buffer overflow while handling info response. Exiting.%s\n", buff);
+            exit(1);
+        }
+    }
+
+    struct tm *utc;
+    utc = gmtime(&start);
+
+    size_t count2 = strftime(buff + count, 15 + 1, "%b %d %H:%M:%S", utc); // fixed length of 15 + null
+
+    sprintf(buff + count + count2, " UTC. If I get outdated, please ping my maintainer at nurupo.contributions@gmail.com"); // fixed length of 84 + null
+
+    bootstrap_info_set_motd(buff, strlen(buff));
+
+    return 1;
+}
 
 // Uses the already existing key or creates one if it didn't exist
 //
@@ -175,6 +215,8 @@ void daemonize(LOG_BACKEND log_backend, char *pid_file_path)
 
 int main(int argc, char *argv[])
 {
+    time(&start);
+
     char *cfg_file_path;
     LOG_BACKEND log_backend;
     bool run_in_foreground;
@@ -259,7 +301,8 @@ int main(int argc, char *argv[])
     }
 
     if (enable_motd) {
-        if (bootstrap_set_callbacks(dht->net, DAEMON_VERSION_NUMBER, (uint8_t *)motd, strlen(motd) + 1) == 0) {
+        if (bootstrap_info_init(dht->net, DAEMON_VERSION_NUMBER) == 0) {
+            bootstrap_info_set_callback(&info_reply_callback);
             write_log(LOG_LEVEL_INFO, "Set MOTD successfully.\n");
         } else {
             write_log(LOG_LEVEL_ERROR, "Couldn't set MOTD: %s. Exiting.\n", motd);
