@@ -24,6 +24,7 @@ script:
   - CFLAGS="-Ofast -Wall -Wextra" ./configure --enable-daemon --enable-ntox
   - make
   - make check
+  - cat build/test-suite.log
   - make dist
 
 notifications:
