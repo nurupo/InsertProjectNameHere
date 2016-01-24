@@ -26,6 +26,18 @@ script:
   - make check
   - cat build/test-suite.log
   - make dist
+    # test bootstrap daemon
+  - cp other/bootstrap_daemon/tox-bootstrapd.conf .
+  - |
+    N=-1 &&
+    while grep -q "bootstrap_nodes =" tox-bootstrapd.conf;
+    do
+      head -n $N other/bootstrap_daemon/tox-bootstrapd.conf > tox-bootstrapd.conf;
+      N=$((N-1));
+    done
+  - python3 other/bootstrap_daemon/docker/get-nodes.py >> tox-bootstrapd.conf
+  - cat tox-bootstrapd.conf
+  - timeout --preserve-status 5 tox-bootstrapd --config tox-bootstrapd.conf --log-backend stdout --foreground
 
 notifications:
   email: false
