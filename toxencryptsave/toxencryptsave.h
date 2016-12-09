@@ -207,7 +207,7 @@ bool tox_derive_key_with_salt(const uint8_t *passphrase, size_t pplength, const 
  * success does not say anything about the validity of the data, only that data of
  * the appropriate size was copied
  */
-bool tox_get_salt(const uint8_t *data, uint8_t *salt);
+bool tox_get_salt(const uint8_t *data, size_t length, uint8_t *salt);
 
 /* Now come the functions that are analogous to the part 2 functions. */
 
@@ -233,8 +233,10 @@ bool tox_pass_key_decrypt(const uint8_t *data, size_t length, const TOX_PASS_KEY
                           TOX_ERR_DECRYPTION *error);
 
 /* Determines whether or not the given data is encrypted (by checking the magic number)
+ *
+ * returns true on success
  */
-bool tox_is_data_encrypted(const uint8_t *data);
+bool tox_is_data_encrypted(const uint8_t *data, size_t length);
 
 #ifdef __cplusplus
 }

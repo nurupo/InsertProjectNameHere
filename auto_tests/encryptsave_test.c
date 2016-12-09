@@ -73,7 +73,7 @@ START_TEST(test_save_friend)
     TOX_ERR_ENCRYPTION error1;
     bool ret = tox_pass_encrypt(data, size, (const uint8_t *)"correcthorsebatterystaple", 25, enc_data, &error1);
     ck_assert_msg(ret, "failed to encrypted save: %u", error1);
-    ck_assert_msg(tox_is_data_encrypted(enc_data), "magic number missing");
+    ck_assert_msg(tox_is_data_encrypted(enc_data, size2), "magic number missing");
 
     struct Tox_Options options;
     tox_options_default(&options);
@@ -109,7 +109,7 @@ START_TEST(test_save_friend)
     uint8_t encdata2[size2];
     ret = tox_pass_key_encrypt(data2, size, &key, encdata2, &error1);
     ck_assert_msg(ret, "failed to key encrypt %u", error1);
-    ck_assert_msg(tox_is_data_encrypted(encdata2), "magic number the second missing");
+    ck_assert_msg(tox_is_data_encrypted(encdata2, size2), "magic number the second missing");
 
     uint8_t out1[size], out2[size];
     ret = tox_pass_decrypt(encdata2, size2, (const uint8_t *)pw, pwlen, out1, &err3);
@@ -177,7 +177,7 @@ START_TEST(test_keys)
     ck_assert_msg(memcmp(out1, string, 44) == 0, "decryption 3 failed");
 
     uint8_t salt[TOX_PASS_SALT_LENGTH];
-    ck_assert_msg(tox_get_salt(encrypted, salt), "couldn't get salt");
+    ck_assert_msg(tox_get_salt(encrypted, 44 + TOX_PASS_ENCRYPTION_EXTRA_LENGTH, salt), "couldn't get salt");
     TOX_PASS_KEY key2;
     ret = tox_derive_key_with_salt((const uint8_t *)"123qweasdzxc", 12, salt, &key2, &keyerr);
     ck_assert_msg(ret, "generic failure 7: %u", keyerr);

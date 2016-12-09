@@ -60,9 +60,17 @@
  * success does not say anything about the validity of the data, only that data of
  * the appropriate size was copied
  */
-bool tox_get_salt(const uint8_t *data, uint8_t *salt)
+bool tox_get_salt(const uint8_t *data, size_t length, uint8_t *salt)
 {
-    if (memcmp(data, TOX_ENC_SAVE_MAGIC_NUMBER, TOX_ENC_SAVE_MAGIC_LENGTH) != 0) {
+    if (!data || !salt) {
+        return 0;
+    }
+
+    if (length < TOX_ENC_SAVE_MAGIC_LENGTH + crypto_pwhash_scryptsalsa208sha256_SALTBYTES) {
+        return 0;
+    }
+
+    if (!tox_is_data_encrypted(data, length)) {
         return 0;
     }
 
@@ -287,11 +295,11 @@ bool tox_pass_decrypt(const uint8_t *data, size_t length, const uint8_t *passphr
 
 /* Determines whether or not the given data is encrypted (by checking the magic number)
  */
-bool tox_is_data_encrypted(const uint8_t *data)
+bool tox_is_data_encrypted(const uint8_t *data, size_t length)
 {
-    if (memcmp(data, TOX_ENC_SAVE_MAGIC_NUMBER, TOX_ENC_SAVE_MAGIC_LENGTH) == 0) {
-        return 1;
+    if (!data || length < TOX_ENC_SAVE_MAGIC_LENGTH) {
+        return 0;
     }
 
-    return 0;
+    return memcmp(data, TOX_ENC_SAVE_MAGIC_NUMBER, TOX_ENC_SAVE_MAGIC_LENGTH) == 0;
 }
