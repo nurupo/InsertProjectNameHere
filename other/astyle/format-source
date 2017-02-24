@@ -50,3 +50,4 @@ SOURCES=`find . -name "*.[ch]" -and -not -name "*.api.h" -and -not -wholename "*
 $ASTYLE -n --options=other/astyle/astylerc $SOURCES
 
 git diff --exit-code
+return $?
