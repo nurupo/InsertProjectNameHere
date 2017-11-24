@@ -718,7 +718,12 @@ bool toxav_audio_send_frame(ToxAV *av, uint32_t friend_number, const int16_t *pc
             goto END;
         }
 
-        if (rtp_send_data(call->audio.first, dest, vrc + sizeof(sampling_rate), av->m->log) != 0) {
+		uint32_t frame_size_safe = vrc + sizeof(sampling_rate);
+		if (frame_size_safe > 65533) {
+			frame_size_safe = 65533;
+		}
+
+        if (rtp_send_data(call->audio.first, dest, (uint16_t)frame_size_safe, av->m->log) != 0) {
             LOGGER_WARNING(av->m->log, "Failed to send audio packet");
             rc = TOXAV_ERR_SEND_FRAME_RTP_FAILED;
         }
