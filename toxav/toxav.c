@@ -814,13 +814,17 @@ bool toxav_video_send_frame(ToxAV *av, uint32_t friend_number, uint16_t width, u
         const vpx_codec_cx_pkt_t *pkt;
 
         while ((pkt = vpx_codec_get_cx_data(call->video.second->encoder, &iter))) {
-            if (pkt->kind == VPX_CODEC_CX_FRAME_PKT &&
-                    rtp_send_data(call->video.first, (const uint8_t *)pkt->data.frame.buf, pkt->data.frame.sz, av->m->log) < 0) {
-
-                pthread_mutex_unlock(call->mutex_video);
-                LOGGER_WARNING(av->m->log, "Could not send video frame: %s\n", strerror(errno));
-                rc = TOXAV_ERR_SEND_FRAME_RTP_FAILED;
-                goto END;
+            if (pkt->kind == VPX_CODEC_CX_FRAME_PKT) {
+                uint32_t frame_size_safe = pkt->data.frame.sz;
+                if (frame_size_safe > 65533) {
+                    frame_size_safe = 65533;
+                }
+                if (rtp_send_data(call->video.first, (const uint8_t *)pkt->data.frame.buf, (uint16_t)pkt->data.frame.sz, av->m->log) < 0) {
+                    pthread_mutex_unlock(call->mutex_video);
+                    LOGGER_WARNING(av->m->log, "Could not send video frame: %s\n", strerror(errno));
+                    rc = TOXAV_ERR_SEND_FRAME_RTP_FAILED;
+                    goto END;
+                }
             }
         }
     }
