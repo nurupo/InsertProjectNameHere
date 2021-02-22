@@ -16,10 +16,6 @@ build() {
   # toxcore dependencies that we will copy to the user for static build of toxcore (e.g. vpx, opus, sodium)
   DEP_PREFIX_DIR="/root/prefix/$ARCH"
 
-  # toxcore dependencies that user doesn't need in build result
-  EXTRA_DEP_PREFIX_DIR="/root/extra-prefix/$ARCH"
-  mkdir -p "$EXTRA_DEP_PREFIX_DIR"
-
   # where to put the result of this particular build
   RESULT_PREFIX_DIR="/prefix/$ARCH"
   rm -rf "$RESULT_PREFIX_DIR"
@@ -37,7 +33,7 @@ build() {
 
   echo
   echo "=== Building toxcore $ARCH ==="
-  export PKG_CONFIG_PATH="$DEP_PREFIX_DIR/lib/pkgconfig:$EXTRA_DEP_PREFIX_DIR/lib/pkgconfig"
+  export PKG_CONFIG_PATH="$DEP_PREFIX_DIR/lib/pkgconfig"
 
   if [ "$CROSS_COMPILE" = "true" ]; then
     TOXCORE_DIR="/toxcore"
@@ -48,7 +44,7 @@ build() {
     TOXCORE_DIR="$PWD"
   fi
 
-  cp "$TOXCORE_DIR" /tmp/toxcore -R
+  cp -a "$TOXCORE_DIR" /tmp/toxcore
   cd /tmp/toxcore/build
 
   echo "
@@ -58,11 +54,11 @@ build() {
         SET(CMAKE_CXX_COMPILER $WINDOWS_TOOLCHAIN-g++)
         SET(CMAKE_RC_COMPILER  $WINDOWS_TOOLCHAIN-windres)
 
-        SET(CMAKE_FIND_ROOT_PATH /usr/$WINDOWS_TOOLCHAIN $DEP_PREFIX_DIR $EXTRA_DEP_PREFIX_DIR)
-    " >windows_toolchain.cmake
+        SET(CMAKE_FIND_ROOT_PATH /usr/$WINDOWS_TOOLCHAIN $DEP_PREFIX_DIR)
+    " > windows_toolchain.cmake
 
   if [ "$ENABLE_TEST" = "true" ]; then
-    echo "SET(CROSSCOMPILING_EMULATOR /usr/bin/wine)" >>windows_toolchain.cmake
+    echo "SET(CROSSCOMPILING_EMULATOR /usr/bin/wine)" >> windows_toolchain.cmake
   fi
 
   cmake -DCMAKE_TOOLCHAIN_FILE=windows_toolchain.cmake \
@@ -93,7 +89,7 @@ build() {
     export WINEPATH="$(
       cd /usr/lib/gcc/"$WINDOWS_TOOLCHAIN"/*posix/
       winepath -w "$PWD"
-    )"\;"$(winepath -w /usr/"$WINDOWS_TOOLCHAIN"/lib/)"\;"$(winepath -w "$EXTRA_DEP_PREFIX_DIR"/bin)"
+    )"\;"$(winepath -w /usr/"$WINDOWS_TOOLCHAIN"/lib/)"
 
     if [ "$ALLOW_TEST_FAILURE" = "true" ]; then
       set +e
@@ -105,8 +101,8 @@ build() {
   fi
 
   # move static dependencies
-  cp "$STATIC_TOXCORE_PREFIX_DIR"/* "$RESULT_PREFIX_DIR" -R
-  cp "$DEP_PREFIX_DIR"/* "$RESULT_PREFIX_DIR" -R
+  cp -a "$STATIC_TOXCORE_PREFIX_DIR"/* "$RESULT_PREFIX_DIR"
+  cp -a "$DEP_PREFIX_DIR"/* "$RESULT_PREFIX_DIR"
 
   # make libtox.dll
   cd "$SHARED_TOXCORE_PREFIX_DIR"
