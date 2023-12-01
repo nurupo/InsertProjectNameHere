@@ -73,8 +73,39 @@ void handle_command_line_arguments(int argc, char *argv[], char **cfg_file_path,
     *run_in_foreground = false;
 
     int opt;
+    int long_options_index = 0;
 
-    while ((opt = getopt_long(argc, argv, ":", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, ":", long_options, &long_options_index)) != -1) {
+
+        // getopt_long allows abbreviated match by default, we enforce exact match instead
+        if (opt != '?') {
+            // current element, argv[optind-1], could be a non-option (an argument),
+            // in which case we need to check argv[optind-2]
+            for (int i = 1; i <= 2 && optind - i > 0; ++i) {
+                // skip the non-option
+                if (strncmp(argv[optind - i], "--", 2) != 0) {
+                    continue;
+                }
+
+                bool option_exact_matched = false;
+                if (opt == ':') {
+                    // the element is not an option but a missing required argument,
+                    // getopt doesn't set long_options_index, so we have to find the option ourselves
+                    for (size_t j = 0; !option_exact_matched && long_options[j].name != nullptr; ++j) {
+                        option_exact_matched = strcmp(argv[optind - i] + 2, long_options[j].name) == 0;
+                    }
+                } else {
+                    // the element is an option, getopt sets long_options_index so we can use that
+                    option_exact_matched = strcmp(argv[optind - i] + 2, long_options[long_options_index].name) == 0;
+                }
+
+                if (!option_exact_matched) {
+                    opt = '?';
+                }
+
+                break;
+            }
+        }
 
         switch (opt) {
 
