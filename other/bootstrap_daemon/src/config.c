@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Copyright © 2016-2018 The TokTok team.
+ * Copyright © 2016-2023 The TokTok team.
  * Copyright © 2014-2016 Tox project.
  */
 
@@ -39,22 +39,26 @@ static void parse_tcp_relay_ports_config(config_t *cfg, uint16_t **tcp_relay_por
         log_write(LOG_LEVEL_WARNING, "No '%s' setting in the configuration file.\n", NAME_TCP_RELAY_PORTS);
         log_write(LOG_LEVEL_WARNING, "Using default '%s':\n", NAME_TCP_RELAY_PORTS);
 
-        uint16_t default_ports[DEFAULT_TCP_RELAY_PORTS_COUNT] = {DEFAULT_TCP_RELAY_PORTS};
+        uint16_t default_ports[] = {DEFAULT_TCP_RELAY_PORTS};
 
-        for (int i = 0; i < DEFAULT_TCP_RELAY_PORTS_COUNT; ++i) {
-            log_write(LOG_LEVEL_INFO, "Port #%d: %u\n", i, default_ports[i]);
+        const size_t default_ports_count = sizeof(default_ports)/sizeof(*default_ports);
+        // Check to avoid calling malloc(0)
+        static_assert(default_ports_count > 0, "At least one default TCP relay port should be provided");
+
+        for (size_t i = 0; i < default_ports_count; ++i) {
+            log_write(LOG_LEVEL_INFO, "Port #%u: %u\n", i, default_ports[i]);
         }
 
         // similar procedure to the one of reading config file below
-        *tcp_relay_ports = (uint16_t *)malloc(DEFAULT_TCP_RELAY_PORTS_COUNT * sizeof(uint16_t));
+        *tcp_relay_ports = (uint16_t *)malloc(default_ports_count * sizeof(uint16_t));
 
-        for (int i = 0; i < DEFAULT_TCP_RELAY_PORTS_COUNT; ++i) {
+        for (size_t i = 0; i < default_ports_count; ++i) {
 
             (*tcp_relay_ports)[*tcp_relay_port_count] = default_ports[i];
 
             if ((*tcp_relay_ports)[*tcp_relay_port_count] < MIN_ALLOWED_PORT
                     || (*tcp_relay_ports)[*tcp_relay_port_count] > MAX_ALLOWED_PORT) {
-                log_write(LOG_LEVEL_WARNING, "Port #%d: Invalid port: %u, should be in [%d, %d]. Skipping.\n", i,
+                log_write(LOG_LEVEL_WARNING, "Port #%u: Invalid port: %u, should be in [%d, %d]. Skipping.\n", i,
                           (*tcp_relay_ports)[*tcp_relay_port_count], MIN_ALLOWED_PORT, MAX_ALLOWED_PORT);
                 continue;
             }
