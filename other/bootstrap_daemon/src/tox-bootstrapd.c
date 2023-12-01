@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Copyright © 2016-2018 The TokTok team.
+ * Copyright © 2016-2023 The TokTok team.
  * Copyright © 2014-2016 Tox project.
  */
 
@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
             const rlim_t rlim_suggested = 32768;
             const rlim_t rlim_min = 4096;
 
-            assert(rlim_suggested >= rlim_min);
+            static_assert(rlim_suggested >= rlim_min);
 
             if (!getrlimit(RLIMIT_NOFILE, &limit)) {
                 if (limit.rlim_cur < limit.rlim_max) {
